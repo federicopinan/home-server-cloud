@@ -20,3 +20,8 @@ pillow-heif==1.5.0
 piper-tts==1.6.0
 # Whisper for speech-to-text (CTRanslate2 backend, no torch)
 faster-whisper==1.2.1
+
+# ─── Windows Enhancements (Terminal PTY & System Tray) ─
+pywinpty==3.0.5; sys_platform == 'win32'
+pystray==0.19.5; sys_platform == 'win32'
+

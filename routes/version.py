@@ -28,7 +28,9 @@ CHANGELOG = [
             "Books: cover generator uses cross-platform fonts",
             "AI chat: consistent default model, input caps, real error messages from summarize/Q&A",
             "Cross-platform: real OS detection (Debian/Fedora/macOS/Windows)",
-            "Windows: setup.ps1 installer + decloud.ps1 lifecycle wrapper; terminal degrades gracefully",
+            "Windows: setup.ps1 installer + decloud.ps1 lifecycle wrapper; full interactive terminal via ConPTY (pywinpty)",
+            "Backup: 1-Click export and restore system data (.zip) with path traversal protection",
+            "Security: WebAuthn biometric unlock (Windows Hello, Touch ID, Face ID, Passkeys)",
             "Tests: 74 security tests (auth, CSRF, WebSocket, allowlist, traversal, symlinks) + CI on Ubuntu/macOS/Windows",
         ]
     },

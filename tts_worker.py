@@ -230,7 +230,6 @@ def main():
                 ], capture_output=True)
                 Path(chunk_files[0]).unlink()
             else:
-                import subprocess
                 # Use ffmpeg to concatenate WAVs then convert to MP3
                 concat_file = audio_dir / f'{book_id}_ch{idx}_concat.txt'
                 concat_file.write_text('\n'.join(f"file '{f}'" for f in chunk_files))

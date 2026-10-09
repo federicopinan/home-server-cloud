@@ -6,7 +6,10 @@ function switchSettingsTab(tabId) {
   document.querySelectorAll('.settings-panel').forEach(function(p) { p.style.display = 'none'; p.classList.remove('active'); });
   var panel = document.getElementById(panelId);
   if (panel) { panel.style.display = ''; panel.classList.add('active'); }
-  if (panelId === 'st-panel-network') loadSettingsDevices();
+  if (panelId === 'st-panel-network') {
+    loadSettingsDevices();
+    if (window.checkWebAuthnSettings) checkWebAuthnSettings();
+  }
   if (panelId === 'st-panel-telemetry') loadSettingsUsage();
   if (panelId === 'st-panel-logs') loadSettingsLogs();
   if (panelId === 'st-panel-about') loadAbout();
@@ -302,3 +305,60 @@ async function _waitForRestart(toRef) {
 window.checkForUpdates = checkForUpdates;
 window.performUpdate = performUpdate;
 window.performRollback = performRollback;
+
+function downloadBackup() {
+  var a = document.createElement('a');
+  a.href = '/api/system/backup';
+  a.download = '';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+async function handleRestoreBackup(event) {
+  var file = event.target.files && event.target.files[0];
+  if (!file) return;
+
+  var note = document.getElementById('backup-status-note');
+  if (note) {
+    note.textContent = 'Restoring backup…';
+    note.className = 'settings-note';
+  }
+
+  var formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    var csrf = sessionStorage.getItem('decloud_csrf') || '';
+    var r = await fetch('/api/system/restore', {
+      method: 'POST',
+      headers: {
+        'X-CSRF-Token': csrf
+      },
+      body: formData
+    });
+    var d = await r.json();
+    if (r.ok && d.ok) {
+      if (note) {
+        note.textContent = '✓ ' + (d.message || 'Backup restored successfully! Refreshing…');
+        note.className = 'settings-note settings-note-ok';
+      }
+      setTimeout(function() { location.reload(); }, 2000);
+    } else {
+      if (note) {
+        note.textContent = '✗ ' + (d.error || 'Failed to restore backup');
+        note.className = 'settings-note settings-note-err';
+      }
+    }
+  } catch (e) {
+    if (note) {
+      note.textContent = '✗ Network error: ' + (e.message || 'failed to upload');
+      note.className = 'settings-note settings-note-err';
+    }
+  }
+  event.target.value = '';
+}
+
+window.downloadBackup = downloadBackup;
+window.handleRestoreBackup = handleRestoreBackup;
+

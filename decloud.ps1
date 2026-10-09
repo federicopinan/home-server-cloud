@@ -1,4 +1,4 @@
-# DeCloud — Windows lifecycle wrapper (PowerShell)
+# DeCloud - Windows lifecycle wrapper (PowerShell)
 # Usage: .\decloud.ps1 start|stop|status|restart|qr
 
 param([string]$Command = "status")
@@ -14,16 +14,32 @@ function Get-Passcode {
         $line = Select-String -Path .env -Pattern '^DECLOUD_PIN=' | Select-Object -First 1
         if ($line) { return $line.Line.Substring(12) }
     }
-    return "(not set — open mode)"
+    return "(not set - open mode)"
 }
 
 switch ($Command) {
+    "status" {
+        $task = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
+        if ($task) {
+            Write-Host "Task '$TaskName' state: $($task.State)" -ForegroundColor Cyan
+        } else {
+            Write-Host "Scheduled task '$TaskName' is not registered." -ForegroundColor Yellow
+        }
+
+        try {
+            $res = Invoke-WebRequest -Uri "http://localhost:$Port/" -UseBasicParsing -TimeoutSec 3
+            Write-Host "OK DeCloud is UP and responding at http://localhost:$Port (Status: $($res.StatusCode))" -ForegroundColor Green
+            Write-Host "Access passcode: $(Get-Passcode)" -ForegroundColor Yellow
+        } catch {
+            Write-Host "! DeCloud is not responding at http://localhost:$Port" -ForegroundColor Red
+        }
+    }
     "start" {
         if ((Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue)) {
             Start-ScheduledTask -TaskName $TaskName
             Write-Host "DeCloud scheduled task started."
         } else {
-            Write-Host "No scheduled task found — run .\setup.ps1 first."
+            Write-Host "No scheduled task found - run .\setup.ps1 first."
             Write-Host "Fallback: start the app directly in this window:"
             Write-Host "  .venv\Scripts\python.exe app.py"
         }
@@ -32,7 +48,7 @@ switch ($Command) {
             $null = Invoke-WebRequest -Uri "http://localhost:$Port/" -UseBasicParsing -TimeoutSec 3
             Write-Host "OK App responding at http://localhost:$Port" -ForegroundColor Green
         } catch {
-            Write-Host "! App not responding yet — check the task or run app.py manually." -ForegroundColor Yellow
+            Write-Host "! App not responding yet - check the task or run app.py manually." -ForegroundColor Yellow
         }
     }
     "stop" {
@@ -52,12 +68,20 @@ switch ($Command) {
         Write-Host "  tailscale funnel status"
         Write-Host "Passcode: $(Get-Passcode)"
     }
+    "tray" {
+        $pyw = Join-Path $AppDir ".venv\Scripts\pythonw.exe"
+        if (-not (Test-Path $pyw)) { $pyw = "pythonw.exe" }
+        Start-Process $pyw -ArgumentList "`"$AppDir\tray.py`"" -WorkingDirectory $AppDir -WindowStyle Hidden
+        Write-Host "OK DeCloud System Tray started in background." -ForegroundColor Green
+        Write-Host "Look for the DeCloud icon near your Windows clock." -ForegroundColor Cyan
+    }
     default {
         Write-Host "DeCloud on Windows"
         Write-Host "  .\decloud.ps1 start    - start the app"
         Write-Host "  .\decloud.ps1 stop     - stop the app"
         Write-Host "  .\decloud.ps1 restart  - restart the app"
         Write-Host "  .\decloud.ps1 status   - show status (default)"
+        Write-Host "  .\decloud.ps1 tray     - start system tray icon"
         Write-Host "  .\decloud.ps1 qr       - show access info"
     }
 }

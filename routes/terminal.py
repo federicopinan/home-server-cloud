@@ -3,7 +3,10 @@ from flask import Blueprint, jsonify, request
 from shared import limiter, ws_is_authenticated
 import os, json, subprocess, threading, platform
 
-# POSIX-only imports for the PTY terminal (Windows gets a clean error)
+# POSIX-only imports for the PTY terminal, with pywinpty fallback on Windows
+_PTY_AVAILABLE = False
+_WINPTY_AVAILABLE = False
+
 try:
     import pty as _pty
     import select as _select
@@ -14,6 +17,13 @@ try:
     _PTY_AVAILABLE = True
 except (ImportError, OSError):
     _PTY_AVAILABLE = False
+
+if not _PTY_AVAILABLE:
+    try:
+        from winpty import PtyProcess as _WinPtyProcess
+        _WINPTY_AVAILABLE = True
+    except (ImportError, OSError):
+        _WINPTY_AVAILABLE = False
 
 bp = Blueprint('terminal', __name__)
 
@@ -202,13 +212,12 @@ def register(sock):
                 pass
             return
 
-        if not _PTY_AVAILABLE:
-            # Windows (or exotic platform) — PTY shells are POSIX-only
+        if not _PTY_AVAILABLE and not _WINPTY_AVAILABLE:
             try:
                 ws.send(json.dumps({
                     'type': 'error',
                     'error': 'Interactive terminal is not supported on this OS '
-                             '(requires a POSIX platform: Linux or macOS).',
+                             '(requires a POSIX platform: Linux or macOS, or pywinpty on Windows).',
                 }))
             except Exception:
                 pass
@@ -216,6 +225,86 @@ def register(sock):
                 ws.close()
             except Exception:
                 pass
+            return
+
+        if _WINPTY_AVAILABLE:
+            import shutil
+            shell_cmd = 'powershell.exe'
+            if shutil.which('pwsh'):
+                shell_cmd = 'pwsh.exe'
+
+            try:
+                proc = _WinPtyProcess.spawn([shell_cmd, '-NoLogo'], dimensions=(24, 80))
+            except Exception as spawn_err:
+                try:
+                    ws.send(json.dumps({'type': 'error', 'error': f'Failed to spawn shell: {spawn_err}'}))
+                    ws.close()
+                except Exception:
+                    pass
+                return
+
+            def win_pty_to_ws():
+                """Read from Windows PTY, send to WebSocket."""
+                try:
+                    while proc.isalive():
+                        try:
+                            chunk = proc.read(4096)
+                            if chunk:
+                                ws.send(chunk)
+                        except EOFError:
+                            break
+                        except Exception:
+                            break
+                    try:
+                        ws.send(json.dumps({'type': 'exit'}))
+                        ws.close()
+                    except Exception:
+                        pass
+                except Exception:
+                    pass
+
+            def ws_to_win_pty():
+                """Read from WebSocket, write to Windows PTY."""
+                try:
+                    while proc.isalive():
+                        msg = ws.receive()
+                        if msg is None:
+                            break
+                        try:
+                            data = json.loads(msg)
+                            if data.get('type') == 'resize':
+                                cols = int(data.get('cols', 80))
+                                rows = int(data.get('rows', 24))
+                                try:
+                                    proc.setwinsize(rows, cols)
+                                except Exception:
+                                    pass
+                                continue
+                            elif data.get('type') == 'input':
+                                inp = data.get('data', '')
+                                if inp:
+                                    proc.write(inp)
+                                continue
+                        except (json.JSONDecodeError, TypeError):
+                            pass
+                        if msg:
+                            proc.write(msg)
+                except Exception:
+                    pass
+
+            reader = threading.Thread(target=win_pty_to_ws, daemon=True)
+            reader.start()
+
+            # Handle WebSocket input (blocking on ws.receive())
+            ws_to_win_pty()
+
+            # Cleanup
+            try:
+                if proc.isalive():
+                    proc.terminate(force=True)
+            except Exception:
+                pass
+            reader.join(timeout=1)
             return
 
         import os as _os

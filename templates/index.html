@@ -60,6 +60,18 @@
         </svg>
       </button>
     </div>
+    <div id="login-biometric-section" style="display:none;margin-top:16px;text-align:center">
+      <button class="settings-export-btn" id="login-bio-btn" onclick="loginWithBiometrics()" style="display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 18px;border-radius:24px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:var(--text-main);cursor:pointer;width:100%">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2a10 10 0 0 0-6.88 17.24"/>
+          <path d="M8.5 15.5A6 6 0 0 1 12 6a6 6 0 0 1 6 6v3"/>
+          <path d="M12 10a2 2 0 0 1 2 2v5"/>
+          <path d="M5.5 10A8 8 0 0 1 12 4a8 8 0 0 1 8 8"/>
+          <path d="M15 19a10 10 0 0 1-5 1"/>
+        </svg>
+        <span>Desbloquear con Biometría</span>
+      </button>
+    </div>
   </div>
 </div>
 
@@ -445,6 +457,7 @@
     <button class="settings-tab" id="st-tab-network" onclick="switchSettingsTab('st-tab-network')">Devices</button>
     <button class="settings-tab" id="st-tab-telemetry" onclick="switchSettingsTab('st-tab-telemetry')">Usage</button>
     <button class="settings-tab" id="st-tab-logs" onclick="switchSettingsTab('st-tab-logs')">Logs</button>
+    <button class="settings-tab" id="st-tab-backup" onclick="switchSettingsTab('st-tab-backup')">Backup</button>
     <button class="settings-tab" id="st-tab-about" onclick="switchSettingsTab('st-tab-about')">About</button>
   </div>
   <div class="settings-body">
@@ -509,6 +522,18 @@
           <span class="settings-value" id="settings-tailscale-ip">--</span>
         </div>
       </div>
+      <div class="settings-group">
+        <div class="settings-label">Biometric Authentication (WebAuthn)</div>
+        <div class="about-blurb" style="margin-bottom:12px">
+          Enable biometric login (Windows Hello, Touch ID, Face ID, or fingerprint) for fast access without typing your passcode.
+        </div>
+        <div id="bio-settings-status" style="font-size:13px;margin-bottom:10px;color:var(--text-sub)">Checking biometric status…</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="settings-save-btn" id="bio-register-btn" onclick="registerBiometrics()">Register This Device</button>
+          <button class="settings-export-btn" id="bio-remove-btn" style="display:none;color:#ef4444" onclick="removeBiometrics()">Remove Biometrics</button>
+        </div>
+        <div class="settings-note" id="bio-status-note" style="margin-top:10px"></div>
+      </div>
     </div>
     <!-- Telemetry -->
     <div class="settings-panel" id="st-panel-telemetry" style="display:none">
@@ -569,6 +594,25 @@
       <div class="settings-group">
         <div class="settings-label">Feedback</div>
         <button class="settings-feedback-btn" onclick="window.open('https://github.com/realvitali/decloud/issues/new', '_blank')">Open GitHub Issue</button>
+      </div>
+    </div>
+    <!-- Backup & Restore -->
+    <div class="settings-panel" id="st-panel-backup" style="display:none">
+      <div class="settings-group">
+        <div class="settings-label">Export Data</div>
+        <div class="about-blurb" style="margin-bottom:12px">
+          Download a complete compressed archive containing your settings, configuration, and audiobook bookmarks.
+        </div>
+        <button class="settings-save-btn" onclick="downloadBackup()">Download Backup (.zip)</button>
+      </div>
+      <div class="settings-group">
+        <div class="settings-label">Restore Data</div>
+        <div class="about-blurb" style="margin-bottom:12px">
+          Restore settings and bookmarks from a previously downloaded DeCloud backup file.
+        </div>
+        <input type="file" id="backup-file-input" accept=".zip" style="display:none" onchange="handleRestoreBackup(event)">
+        <button class="settings-export-btn" onclick="document.getElementById('backup-file-input').click()">Select Backup File...</button>
+        <div class="settings-note" id="backup-status-note" style="margin-top:10px"></div>
       </div>
     </div>
   </div>

@@ -223,8 +223,8 @@ powershell -ExecutionPolicy Bypass -File .\setup.ps1   # install + logon task
 .\decloud.ps1 status                                   # manage the app
 ```
 
-The interactive web terminal requires Linux/macOS (it uses a PTY) and
-shows a friendly message on Windows; every other feature works.
+The interactive web terminal works across platforms: native POSIX PTY on
+Linux/macOS, and native ConPTY (via pywinpty) with PowerShell on Windows.
 
 ## License
 

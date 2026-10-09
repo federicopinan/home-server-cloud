@@ -52,3 +52,11 @@ class TestCommandAllowlist:
             if isinstance(argv, list):
                 for part in argv:
                     assert '|' not in part and ';' not in part and '*' not in part, spec
+
+    def test_pty_availability_by_platform(self):
+        import sys
+        from routes.terminal import _WINPTY_AVAILABLE, _PTY_AVAILABLE
+        if sys.platform == 'win32':
+            assert _WINPTY_AVAILABLE is True, "pywinpty should be available on Windows"
+        else:
+            assert _PTY_AVAILABLE is True, "pty should be available on POSIX"

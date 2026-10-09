@@ -10,15 +10,21 @@ from pathlib import Path
 # Add parent dir to path so we can import the app
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+import tempfile
+
+_tmp = tempfile.gettempdir()
+_test_books = os.path.join(_tmp, 'test-books')
+_test_files = os.path.join(_tmp, 'test-files')
+
 # Set test env vars before importing
 os.environ.setdefault('DECLOUD_PORT', '8899')
-os.environ.setdefault('DECLOUD_BOOKS_DIR', '/tmp/test-books')
-os.environ.setdefault('DECLOUD_FILES_DIR', '/tmp/test-files')
+os.environ.setdefault('DECLOUD_BOOKS_DIR', _test_books)
+os.environ.setdefault('DECLOUD_FILES_DIR', _test_files)
 os.environ.setdefault('SECRET_KEY', 'test-secret-key-for-pytest')
 
 # Create test dirs
-Path('/tmp/test-books').mkdir(exist_ok=True)
-Path('/tmp/test-files').mkdir(exist_ok=True)
+Path(_test_books).mkdir(parents=True, exist_ok=True)
+Path(_test_files).mkdir(parents=True, exist_ok=True)
 
 from app import app
 

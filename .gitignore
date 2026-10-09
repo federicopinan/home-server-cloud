@@ -13,6 +13,8 @@ secrets/
 config-local.yaml
 auth.json
 credentials.json
+webauthn_credentials.json
+.env.bak
 
 # Dependencies
 .venv/

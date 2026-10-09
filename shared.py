@@ -170,7 +170,9 @@ def _require_auth():
         return
     if req.path == '/' or req.path == '/kill-cache':
         return
-    if req.path == '/api/auth/login' or req.path == '/api/auth/check':
+    if (req.path == '/api/auth/login' or req.path == '/api/auth/check'
+            or req.path == '/api/auth/webauthn/status'
+            or req.path.startswith('/api/auth/webauthn/login')):
         return
     if not _is_authenticated():
         if req.path.startswith('/api/'):
