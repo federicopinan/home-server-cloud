@@ -61,7 +61,35 @@ _load_env_file()
 #   - Sessions are scoped to a single process (in-memory) and expire
 #     after 30 days. A restart invalidates all sessions, forcing
 #     re-login — acceptable for a personal self-hosted app.
-DECLOUD_PIN = os.environ.get('DECLOUD_PIN', '')
+DECLOUD_PIN = os.environ.get('DECLOUD_PIN', '').strip()
+_bind_host_for_auth = os.environ.get('DECLOUD_HOST', '127.0.0.1').strip().lower()
+
+
+def validate_security_config(host: str, pin: str, secret_key: str) -> bool:
+    """Validate security-sensitive startup settings.
+
+    Returns True when the supplied key is persistent and usable, or False when
+    localhost development may generate an ephemeral key.
+    """
+    local_hosts = ('127.0.0.1', 'localhost', '::1')
+    if not pin and host not in local_hosts:
+        raise SystemExit(
+            '[decloud] DECLOUD_PIN is required when DECLOUD_HOST is not localhost. '
+            'Set an 8+ character passcode before exposing the app.'
+        )
+    insecure_keys = {
+        '', 'change-me', 'change-me-to-a-random-string', 'your-secret-key',
+    }
+    if secret_key in insecure_keys or len(secret_key) < 32:
+        if pin and host not in local_hosts:
+            raise SystemExit(
+                '[decloud] SECRET_KEY must be set to a random value of at least '
+                '32 characters when DECLOUD_HOST is not localhost.'
+            )
+        return False
+    return True
+
+
 if DECLOUD_PIN:
     if len(DECLOUD_PIN) > 64:
         raise SystemExit('[decloud] DECLOUD_PIN is longer than 64 characters.')
@@ -71,14 +99,16 @@ if DECLOUD_PIN:
               'default is now 8 digits.', flush=True)
 
 # Refuse to start with the placeholder SECRET_KEY. Generate one if missing.
-_env_secret = os.environ.get('SECRET_KEY', '')
-if _env_secret and _env_secret != 'change-me-to-a-random-string':
+_env_secret = os.environ.get('SECRET_KEY', '').strip()
+if validate_security_config(_bind_host_for_auth, DECLOUD_PIN, _env_secret):
     SECRET_KEY = _env_secret
 else:
+    # Remote/container deployments are rejected above; localhost development
+    # remains convenient by using an ephemeral key.
     SECRET_KEY = secrets.token_hex(32)
-    print('[decloud] WARNING: SECRET_KEY not set in .env — generated an ephemeral '
-          'one for this run. Sessions will not survive a restart. '
-          'Set SECRET_KEY in .env to persist sessions.', flush=True)
+    print('[decloud] WARNING: SECRET_KEY is missing or too short — generated an '
+          'ephemeral one for this run. Sessions will not survive a restart. '
+          'Set SECRET_KEY to at least 32 random characters in .env.', flush=True)
 app.secret_key = SECRET_KEY
 
 # In-memory session store: token -> expiry epoch seconds
@@ -236,9 +266,14 @@ BASE_DIR = Path(__file__).parent
 # Appends one line per request to app.log so the Logs screen works.
 # Format matches _read_logs(): "TIMESTAMP LEVEL MESSAGE".
 import logging as _logging
+from logging.handlers import RotatingFileHandler as _RotatingFileHandler
 
 _req_logger = _logging.getLogger('decloud.requests')
-_req_handler = _logging.FileHandler(BASE_DIR / 'app.log')
+_req_logger.propagate = False
+# Keep logs bounded: 5 MiB active file plus five rotated backups.
+_req_handler = _RotatingFileHandler(
+    BASE_DIR / 'app.log', maxBytes=5 * 1024 * 1024, backupCount=5,
+)
 _req_handler.setFormatter(_logging.Formatter('%(asctime)s %(levelname)s %(message)s', datefmt='%Y-%m-%dT%H:%M:%S'))
 _req_logger.addHandler(_req_handler)
 _req_logger.setLevel(_logging.INFO)

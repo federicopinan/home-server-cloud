@@ -41,6 +41,10 @@ def _reset_limiter():
     from shared import limiter
     yield
     limiter.reset()
+    # Tests that temporarily reload configuration can replace the limiter's
+    # in-memory storage; restore the application limiter state between tests.
+    import shared
+    shared._LOGIN_ATTEMPTS.clear()
 
 
 @pytest.fixture

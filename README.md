@@ -214,6 +214,18 @@ python -m pytest tests/        # 74 security + smoke tests
 
 CI runs the suite on Ubuntu, macOS, and Windows.
 
+## Production server
+
+On Linux/macOS, use Gunicorn instead of Flask's development server:
+
+```bash
+gunicorn -c gunicorn.conf.py app:app
+```
+
+The supplied configuration deliberately uses one worker because sessions and
+WebSocket state are process-local. Put Tailscale Funnel or a TLS reverse proxy
+in front of Gunicorn; do not expose its port directly to the Internet.
+
 ## Windows
 
 Windows is supported (the app itself runs anywhere Python 3.10+ does):
